@@ -101,15 +101,21 @@ These steps can't be done from files in the repo:
    runs on bot-authored PRs without manual approval. (PATs expire; if that
    becomes a problem, swap in a GitHub App like `actions/create-github-app-token`.)
 3. **Branch protection on `main`**:
-   - Require status checks: the jobs in `ci.yml` — `test`, `lint`,
-     `pre-commit`, `conventions`, `release-check` (at least one required check
-     is mandatory for platform automerge to be safe).
+   - Require status checks: the jobs in `ci.yml` — `Test (build, vet, race)`,
+     `Lint`, `Pre-commit`, `Commit conventions`, `Release config check`
+     (at least one required check is mandatory for platform automerge to be
+     safe).
    - ✅ Allow auto-merge (required for Renovate platform automerge).
    - ✅ Require linear history (squash-only; merge commits would break
      release-please's commit parsing).
    - Either no required reviews, or add `renovate[bot]` (and the release
      token's user) to the "allow specified actors to bypass" list — otherwise
      automerge is blocked by the review requirement.
+
+   Until `RELEASE_PLEASE_TOKEN` exists, the `Release` workflow's jobs skip
+   themselves via a token-gate job (secrets can't be referenced in job-level
+   `if` conditionals) rather than failing every push to `main`.
+
 4. **First push**: after the CI config lands, verify release-please stays
    quiet (the `v0.1.0` tag marks everything released). Exercise the full flow
    with a small `fix:` commit: release-please opens a Release PR → merge it →
