@@ -3,11 +3,10 @@
 package biometrics
 
 import (
-	"runtime"
-
 	"bitwarden-bio/internal/client"
 	"bitwarden-bio/internal/log"
 	"bitwarden-bio/internal/session"
+	"runtime"
 )
 
 // Result of a biometric unlock attempt.

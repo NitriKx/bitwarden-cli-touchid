@@ -18,6 +18,10 @@
 package client
 
 import (
+	"bitwarden-bio/internal/bwcrypto"
+	"bitwarden-bio/internal/fingerprint"
+	"bitwarden-bio/internal/ipc"
+	"bitwarden-bio/internal/log"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -29,11 +33,6 @@ import (
 	"net"
 	"os"
 	"time"
-
-	"bitwarden-bio/internal/bwcrypto"
-	"bitwarden-bio/internal/fingerprint"
-	"bitwarden-bio/internal/ipc"
-	"bitwarden-bio/internal/log"
 )
 
 const (
@@ -222,7 +221,7 @@ func (c *Client) Handshake() error {
 		msg, err := c.readRaw(deadline)
 		if err != nil {
 			if errors.Is(err, errTimeout) {
-				return errors.New("Secure channel setup timed out")
+				return errors.New("secure channel setup timed out")
 			}
 			return err
 		}
@@ -242,9 +241,9 @@ func (c *Client) Handshake() error {
 			if msg.AppID != c.appID {
 				continue
 			}
-			return errors.New("Encryption channel invalidated by Desktop app")
+			return errors.New("encryption channel invalidated by desktop app")
 		case "wrongUserId":
-			return errors.New("Account mismatch: CLI and Desktop app are logged into different accounts")
+			return errors.New("account mismatch: CLI and desktop app are logged into different accounts")
 		case "verifyDesktopIPCFingerprint":
 			c.showFingerprint()
 		default:
@@ -311,13 +310,13 @@ func (c *Client) call(command, userID string, timeout time.Duration) (*receivedM
 		msg, err := c.readRaw(deadline)
 		if err != nil {
 			if errors.Is(err, errTimeout) {
-				return nil, errors.New("Message timed out waiting for Desktop app response")
+				return nil, errors.New("message timed out waiting for desktop app response")
 			}
 			// Disconnect while the response is still outstanding: only an
 			// error (the caller falls back to regular bw unlock). If the key
 			// was already delivered we never reach this point.
 			log.Debug("Socket closed while waiting for response: " + err.Error())
-			return nil, errors.New("Disconnected from Desktop app")
+			return nil, errors.New("disconnected from desktop app")
 		}
 		if msg == nil {
 			continue
@@ -334,9 +333,9 @@ func (c *Client) call(command, userID string, timeout time.Duration) (*receivedM
 			if msg.AppID != c.appID {
 				continue
 			}
-			return nil, errors.New("Encryption channel invalidated by Desktop app")
+			return nil, errors.New("encryption channel invalidated by desktop app")
 		case "wrongUserId":
-			return nil, errors.New("Account mismatch: CLI and Desktop app are logged into different accounts")
+			return nil, errors.New("account mismatch: CLI and desktop app are logged into different accounts")
 		case "verifyDesktopIPCFingerprint":
 			c.showFingerprint()
 		default:
@@ -376,7 +375,7 @@ func decodeMessage(raw json.RawMessage, secret []byte) (*receivedMessage, error)
 	if err := json.Unmarshal(raw, &probe); err != nil {
 		return nil, nil // not an object we understand; ignore
 	}
-	var inner json.RawMessage = raw
+	inner := raw
 	if probe.EncryptionType != 0 || probe.EncryptedString != "" {
 		var enc encryptedPayload
 		if err := json.Unmarshal(raw, &enc); err != nil {

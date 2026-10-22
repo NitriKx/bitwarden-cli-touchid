@@ -1,13 +1,12 @@
 package session
 
 import (
+	"bitwarden-bio/internal/bwcrypto"
 	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"bitwarden-bio/internal/bwcrypto"
 )
 
 func withTempDataDir(t *testing.T) string {

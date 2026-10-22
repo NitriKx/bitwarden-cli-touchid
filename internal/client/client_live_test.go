@@ -10,10 +10,9 @@
 package client
 
 import (
+	"bitwarden-bio/internal/session"
 	"fmt"
 	"testing"
-
-	"bitwarden-bio/internal/session"
 )
 
 func TestLiveHandshakeAndStatus(t *testing.T) {

@@ -45,13 +45,13 @@ Behavior:
 
 ## Environment variables
 
-| Variable                  | Effect                                                        |
-| ------------------------- | ------------------------------------------------------------- |
-| `BW_SESSION`              | Skip biometrics (pass through to `bw`)                        |
-| `BWBIO_IPC_SOCKET_PATH`   | Override the desktop app IPC socket path                       |
-| `BWBIO_VERBOSE` / `BWBIO_DEBUG` | Verbose/debug logging to stderr                          |
-| `BW_NOINTERACTION=true`   | Skip biometric attempts                                        |
-| `BW_QUIET=true`           | Suppress informational messages                               |
+| Variable                        | Effect                                   |
+| ------------------------------- | ---------------------------------------- |
+| `BW_SESSION`                    | Skip biometrics (pass through to `bw`)   |
+| `BWBIO_IPC_SOCKET_PATH`         | Override the desktop app IPC socket path |
+| `BWBIO_VERBOSE` / `BWBIO_DEBUG` | Verbose/debug logging to stderr          |
+| `BW_NOINTERACTION=true`         | Skip biometric attempts                  |
+| `BW_QUIET=true`                 | Suppress informational messages          |
 
 ## Protocol (what the desktop app expects)
 
@@ -74,8 +74,7 @@ Behavior:
 6. A fresh random 64-byte session key is generated (it is the `BW_SESSION`
    value, base64). The user key is encrypted with it (type-2 protected
    format) and stored in the official `bw` CLI's `data.json` under
-   `__PROTECTED__{userId}_user_auto`, preserving the rest of the file, mode
-   0600. This is what makes the official CLI accept the session key.
+   `__PROTECTED__{userId}_user_auto`, preserving the rest of the file, mode 0600. This is what makes the official CLI accept the session key.
 
 ## Manual test
 
@@ -100,6 +99,31 @@ go test -tags live ./internal/client -run TestLive -v
 ```sh
 go test ./...   # crypto round-trips, framing, fingerprint vector, session storage, disconnect-after-key regression
 ```
+
+## Development
+
+Requires [Task](https://taskfile.dev), Go 1.27, and (via `task setup`)
+pre-commit, golangci-lint, and goreleaser.
+
+```sh
+task setup         # one-time: install tools + git hooks
+task ci            # build, vet, lint, test -race (same as CI)
+task pre-commit    # all hooks on all files
+task snapshot      # local goreleaser build, all platforms, no publish
+```
+
+Commits must follow [Conventional Commits](https://www.conventionalcommits.org/)
+(enforced by a commit-msg hook and by CI). See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow.
+
+## Releases
+
+Releases are automated with
+[release-please](https://github.com/googleapis/release-please) from
+conventional commit messages: merge the standing `chore(main): release X.Y.Z`
+PR and the `vX.Y.Z` tag + GitHub release (binaries for darwin/linux/windows on
+amd64/arm64) are created automatically. The current version lives in
+`main.go` (`var Version`) and is stamped into release binaries at build time.
 
 ## License
 

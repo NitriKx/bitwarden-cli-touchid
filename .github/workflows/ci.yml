@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (build, vet, race)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Build
+        run: CGO_ENABLED=0 go build -o bwbio .
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race ./...
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+
+  pre-commit:
+    name: Pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - uses: pre-commit/action@v3.0.1
+
+  conventions:
+    name: Commit conventions
+    # PR-only. release-please's Release PR commits are bot-authored; the
+    # semantic-title check would fail on "chore(main): release X.Y.Z" and
+    # prettier would fight its CHANGELOG formatting — and we merge that PR
+    # manually anyway.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref != 'release-please--branches--main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+
+      - name: Validate PR title (becomes the squash-merge commit message)
+        uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          # The release PR title "chore(main): release X.Y.Z" is conventional;
+          # scope is optional here because commitlint enforces the full config
+          # (including scopes) on the individual commits below.
+          validateSingleCommit: false
+
+      - name: Commitlint (all commits in the PR)
+        run: |
+          npm ci --prefix "$RUNNER_TEMP/commitlint" --no-save @commitlint/cli @commitlint/config-conventional 2>/dev/null || \
+            npm install --prefix "$RUNNER_TEMP/commitlint" --no-save @commitlint/cli @commitlint/config-conventional
+          npx --prefix "$RUNNER_TEMP/commitlint" commitlint \
+            --from "${{ github.event.pull_request.base.sha }}" \
+            --to HEAD \
+            --config .commitlintrc.json
+
+  release-check:
+    name: Release config check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Validate goreleaser config
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          args: check
+
+      - name: goreleaser healthcheck
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          args: healthcheck
+
+      - name: Snapshot build (all platforms, no publish)
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          args: release --snapshot --clean --skip=publish

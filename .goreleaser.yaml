@@ -1,0 +1,45 @@
+version: 2
+
+project_name: bwbio
+
+builds:
+  - id: bwbio
+    main: .
+    binary: bwbio
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.Version={{.Version}}
+
+archives:
+  - id: bwbio
+    formats: [tar.gz]
+    # Windows users expect .zip
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  # release-please owns the changelog (CHANGELOG.md and the release notes).
+  disable: true
+
+release:
+  # release-please creates the GitHub release as a draft with the release
+  # notes; adopt it, upload binaries, then publish. This works whether or not
+  # the repo has immutable releases enabled.
+  use_existing_draft: true
+  mode: keep-existing
+  replace_existing_artifacts: true
+
+sboms:
+  - artifacts: archive

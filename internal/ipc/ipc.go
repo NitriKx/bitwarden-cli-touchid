@@ -4,6 +4,7 @@
 package ipc
 
 import (
+	"bitwarden-bio/internal/log"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
@@ -14,8 +15,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
-
-	"bitwarden-bio/internal/log"
 )
 
 // maxMessageSize guards against absurd length prefixes (the original had none).
@@ -80,7 +79,11 @@ func (errReader) Read([]byte) (int, error) { return 0, errors.New("IPC message t
 
 // WriteMessage writes a length-prefixed message.
 func WriteMessage(w io.Writer, payload []byte) error {
+	if len(payload) > maxMessageSize {
+		return errors.New("IPC message too large")
+	}
 	buf := make([]byte, 4+len(payload))
+	// #nosec G115 -- guarded by the maxMessageSize check above.
 	binary.LittleEndian.PutUint32(buf[:4], uint32(len(payload)))
 	copy(buf[4:], payload)
 	_, err := w.Write(buf)
@@ -156,5 +159,5 @@ func Connect() (net.Conn, error) {
 		log.Debug("Socket connected: " + path)
 		return conn, nil
 	}
-	return nil, errors.New(`Failed to connect to desktop app. Ensure the app is running and "Allow browser integration" is enabled in Desktop settings.`)
+	return nil, errors.New(`failed to connect to desktop app; ensure the app is running and "Allow browser integration" is enabled in Desktop settings`)
 }

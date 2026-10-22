@@ -1,0 +1,76 @@
+version: "3"
+
+vars:
+  BINARY: bwbio
+  DIST: dist
+
+tasks:
+  default:
+    cmds:
+      - task: ci
+
+  setup:
+    desc: Install local dev tools (pre-commit, golangci-lint, goreleaser)
+    cmds:
+      - brew install pre-commit golangci-lint goreleaser
+      - pre-commit install --install-hooks
+
+  build:
+    desc: Build the binary
+    cmds:
+      - CGO_ENABLED=0 go build -o {{.BINARY}} .
+
+  test:
+    desc: Run tests (with race detector)
+    cmds:
+      - go test -race ./...
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  fmt:
+    desc: Format code (gofumpt via golangci-lint)
+    cmds:
+      - golangci-lint fmt ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run ./...
+
+  tidy:
+    desc: Tidy go.mod / verify module
+    cmds:
+      - go mod tidy
+      - go mod verify
+
+  pre-commit:
+    desc: Run all pre-commit hooks on all files
+    cmds:
+      - pre-commit run --all-files
+
+  snapshot:
+    desc: Build a snapshot release locally (goreleaser --snapshot)
+    cmds:
+      - goreleaser release --snapshot --clean --skip=publish
+
+  release:check:
+    desc: Validate the goreleaser config without building
+    cmds:
+      - goreleaser check
+      - goreleaser healthcheck
+
+  ci:
+    desc: Full local CI pipeline (build, vet, lint, test)
+    cmds:
+      - task: build
+      - task: vet
+      - task: lint
+      - task: test
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf {{.BINARY}} {{.DIST}}

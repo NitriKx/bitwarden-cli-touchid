@@ -6,15 +6,17 @@
 package main
 
 import (
+	"bitwarden-bio/internal/biometrics"
+	"bitwarden-bio/internal/session"
 	"fmt"
 	"os"
 	"os/exec"
-
-	"bitwarden-bio/internal/biometrics"
-	"bitwarden-bio/internal/session"
 )
 
-const version = "1.4.2"
+// Version is the bwbio release version. release-please bumps this line (see
+// the x-release-please-version annotation); goreleaser stamps the tag version
+// over it at build time via -ldflags "-X main.Version=...".
+var Version = "0.1.0" // x-release-please-version
 
 // writeLn prints to stdout unless BW_QUIET=true (mirrors main.ts).
 func writeLn(s string) {
@@ -26,6 +28,8 @@ func writeLn(s string) {
 // executeBw runs the official bw CLI with the given args, inheriting stdio.
 // If sessionKey is non-empty it is exported as BW_SESSION to the child.
 func executeBw(args []string, sessionKey string) int {
+	// #nosec G702 -- intentional: bwbio's whole purpose is to delegate all
+	// arguments to the official `bw` CLI on the user's PATH.
 	cmd := exec.Command("bw", args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -77,16 +81,16 @@ func main() {
 // run mirrors main() in src/main.ts.
 func run(args []string) int {
 	if contains(args, "--bwbio-version") {
-		writeLn(version)
+		writeLn(Version)
 		return 0
 	}
 
 	// Mirror --quiet and --nointeraction flags to env vars (same as bw CLI).
 	if contains(args, "--quiet") {
-		os.Setenv("BW_QUIET", "true")
+		_ = os.Setenv("BW_QUIET", "true")
 	}
 	if contains(args, "--nointeraction") {
-		os.Setenv("BW_NOINTERACTION", "true")
+		_ = os.Setenv("BW_NOINTERACTION", "true")
 	}
 
 	// Skip biometric unlock when not needed or not possible.

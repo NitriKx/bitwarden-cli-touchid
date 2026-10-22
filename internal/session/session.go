@@ -5,6 +5,7 @@
 package session
 
 import (
+	"bitwarden-bio/internal/bwcrypto"
 	"bytes"
 	"crypto/rand"
 	"encoding/base64"
@@ -12,8 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-
-	"bitwarden-bio/internal/bwcrypto"
 )
 
 // DataDir returns the bw CLI data directory for the current platform.

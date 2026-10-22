@@ -1,6 +1,8 @@
 package client
 
 import (
+	"bitwarden-bio/internal/bwcrypto"
+	"bitwarden-bio/internal/ipc"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -10,9 +12,6 @@ import (
 	"net"
 	"testing"
 	"time"
-
-	"bitwarden-bio/internal/bwcrypto"
-	"bitwarden-bio/internal/ipc"
 )
 
 // fakeHandshake emulates the desktop app's setupEncryption reply: it reads the

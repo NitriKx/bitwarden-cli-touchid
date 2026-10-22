@@ -1,0 +1,53 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: detect-private-key
+      - id: forbid-new-submodules
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.28.0
+    hooks:
+      - id: gitleaks
+        # Run in protect mode (staged changes only), which is the pre-commit default.
+        args: ["--no-banner", "--redact", "--verbose"]
+
+  # prettier/pre-commit is archived; mirrors-prettier/mirrors-prettier is the
+  # community-maintained successor ( Renovate's pre-commit manager tracks it).
+  - repo: https://github.com/mirrors-prettier/mirrors-prettier
+    rev: v3.9.10
+    hooks:
+      - id: prettier
+        types_or: [yaml, markdown, json]
+        # release-please owns CHANGELOG.md and the release PR branch; don't let
+        # prettier fight its formatting.
+        exclude: '^(CHANGELOG\.md|release-please-config\.json|\.release-please-manifest\.json)$'
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint
+
+  - repo: local
+    hooks:
+      - id: golangci-lint
+        name: golangci-lint
+        entry: golangci-lint run --fix
+        language: system
+        types: [go]
+        pass_filenames: false
+
+      - id: conventional-pre-commit
+        name: conventional-pre-commit (commit message must follow Conventional Commits)
+        entry: conventional-pre-commit
+        language: python
+        stages: [commit-msg]
+        # release-please's own commits (e.g. "chore(main): release 0.2.0")
+        # are conventional already; no exemption needed.

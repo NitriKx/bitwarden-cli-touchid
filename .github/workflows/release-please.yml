@@ -1,0 +1,63 @@
+name: Release
+
+# release-please maintains a standing Release PR on main. Merging it (manually)
+# creates the vX.Y.Z tag and a DRAFT GitHub release; the goreleaser job below
+# then adopts the draft, uploads binaries, and publishes it.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create tag + draft release
+      pull-requests: write # open/maintain the Release PR
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      sha: ${{ steps.release.outputs.sha }}
+    steps:
+      - name: Release Please
+        id: release
+        # PAT, not GITHUB_TOKEN: a bot-authored Release PR under the default
+        # token never runs CI (workflows need manual approval), which would
+        # block the required-checks gate when merging the Release PR.
+        uses: googleapis/release-please-action@v5
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+  goreleaser:
+    name: Build and attach release artifacts
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # upload artifacts to the draft release
+    steps:
+      - name: Checkout the release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          # goreleaser derives the version from the tag on HEAD.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          check-latest: true
+
+      - name: Sanity check on the tagged commit
+        run: go test ./...
+
+      - name: Publish binaries to the draft release
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
