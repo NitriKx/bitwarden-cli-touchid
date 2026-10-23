@@ -34,9 +34,9 @@ changelog:
   disable: true
 
 release:
-  # release-please creates the GitHub release as a draft with the release
-  # notes; adopt it, upload binaries, then publish. This works whether or not
-  # the repo has immutable releases enabled.
+  # The workflow now runs goreleaser on tag push, after release-please has
+  # published the release (publishing a release pushes its tag). Adopt the
+  # existing published release, upload binaries, and keep its notes.
   use_existing_draft: true
   mode: keep-existing
   replace_existing_artifacts: true

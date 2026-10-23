@@ -7,6 +7,7 @@ name: Release
 on:
   push:
     branches: [main]
+    tags: ["v*"] # goreleaser publishes on tag push (no draft release involved)
   workflow_dispatch: # manual re-run (e.g. after fixing the RELEASE_PLEASE_TOKEN)
 
 permissions:
@@ -58,23 +59,19 @@ jobs:
 
   goreleaser:
     name: Build and attach release artifacts
-    needs: [release-token-gate, release-please]
-    if: needs.release-token-gate.outputs.configured == 'true' && needs.release-please.outputs.release_created == 'true'
+    # Runs on tag push (github.ref_type == 'tag'). release-please's draft
+    # release has already been published (which pushes the tag), so goreleaser
+    # just needs to attach binaries to the existing release.
+    needs: release-token-gate
+    if: needs.release-token-gate.outputs.configured == 'true' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
-      contents: write # create the tag + upload artifacts to the release
+      contents: write # upload artifacts to the release
     steps:
-      # release-please creates a DRAFT release pointing at the merge commit on
-      # main, but the tag itself doesn't exist yet (it's created when the
-      # release is published). Checkout the commit SHA directly and create
-      # the tag locally so goreleaser can derive the version from it.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.release-please.outputs.sha }}
+          ref: ${{ github.ref }}
           fetch-depth: 0
-
-      - name: Create the release tag locally
-        run: git tag ${{ needs.release-please.outputs.tag_name }}
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
@@ -88,7 +85,7 @@ jobs:
       - name: Install syft
         run: go install github.com/anchore/syft/cmd/syft@latest
 
-      - name: Publish binaries to the draft release
+      - name: Publish binaries to the release
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
         with:
           args: release --clean
