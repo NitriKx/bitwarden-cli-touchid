@@ -97,12 +97,20 @@ These steps can't be done from files in the repo:
 
 1. **Renovate**: install the [Renovate GitHub App](https://github.com/apps/renovate)
    on this repository, then merge its "Configure Renovate" PR.
-2. **Release token**: create a fine-grained PAT with _Contents: write_,
-   _Pull requests: write_, _Metadata: read_ (no expiration if possible), and
-   add it as the repository secret **`RELEASE_PLEASE_TOKEN`**. release-please
-   opens its Release PR with this token instead of `GITHUB_TOKEN` so that CI
-   runs on bot-authored PRs without manual approval. (PATs expire; if that
-   becomes a problem, swap in a GitHub App like `actions/create-github-app-token`.)
+2. **Release token**: create a **classic PAT** (not fine-grained) with the
+   `repo` scope (no expiration if possible), and add it as the repository
+   secret **`RELEASE_PLEASE_TOKEN`**. release-please opens its Release PR with
+   this token instead of `GITHUB_TOKEN` so that CI runs on bot-authored PRs
+   without manual approval.
+
+   ⚠️ **Classic PAT required, not fine-grained.** Fine-grained PATs fail with
+   `Resource not accessible by personal access token` when release-please
+   creates the release branch (`POST /git/refs`) — even with Contents: write.
+   This is a known GitHub limitation with fine-grained PATs and the git refs
+   API. A classic PAT with the `repo` scope works. (PATs expire; if that
+   becomes a problem, swap in a GitHub App like
+   `actions/create-github-app-token`.)
+
 3. **Branch protection (ruleset) on `main`** — this repo uses a ruleset
    named `main`:
    - Required status checks (strict): `CI / Test (build, vet, race)`,
