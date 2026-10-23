@@ -82,8 +82,11 @@ TypeScript project's 1.4.2 on purpose — this is the Go port's own versioning.
 Actions, and pre-commit hook updates, pinned to commit digests, with a 3-day
 `minimumReleaseAge` cool-down.
 
-- **Minor/patch/pin/digest updates automerge** once CI is green (platform
-  automerge). You can see them in the Dependency Dashboard issue.
+- **Minor/patch/pin/digest updates automerge** once CI is green. Renovate
+  merges them itself via the API (`platformAutomerge: false`): with this
+  repo's ruleset, a 1-approval rule blocks GitHub's native auto-merge for
+  bot actors (auto-merge never honors ruleset bypass actors), and Renovate's
+  own merge path does. You can see them in the Dependency Dashboard issue.
 - **Major updates never automerge** — they wait for your review.
 - The release-please Release PR is **not** a Renovate PR and is never
   automerged — merge it manually.
@@ -100,17 +103,23 @@ These steps can't be done from files in the repo:
    opens its Release PR with this token instead of `GITHUB_TOKEN` so that CI
    runs on bot-authored PRs without manual approval. (PATs expire; if that
    becomes a problem, swap in a GitHub App like `actions/create-github-app-token`.)
-3. **Branch protection on `main`**:
-   - Require status checks: the jobs in `ci.yml` — `Test (build, vet, race)`,
-     `Lint`, `Pre-commit`, `Commit conventions`, `Release config check`
-     (at least one required check is mandatory for platform automerge to be
-     safe).
-   - ✅ Allow auto-merge (required for Renovate platform automerge).
-   - ✅ Require linear history (squash-only; merge commits would break
-     release-please's commit parsing).
-   - Either no required reviews, or add `renovate[bot]` (and the release
-     token's user) to the "allow specified actors to bypass" list — otherwise
-     automerge is blocked by the review requirement.
+3. **Branch protection (ruleset) on `main`** — this repo uses a ruleset
+   named `main`:
+   - Required status checks (strict): `CI / Test (build, vet, race)`,
+     `CI / Lint`, `CI / Pre-commit`, `CI / Commit conventions`,
+     `CI / Release config check`.
+   - Pull request rule: 1 required approval, **squash-only** merge methods
+     (linear history; merge commits would break release-please's parsing).
+   - Bypass actors: the **Administrators** repository role (actor_id 5) and
+     the **Renovate app** (actor_id 2740, `Integration`, `bypass_mode:
+always`).
+   - Repo settings: ✅ **Allow auto-merge**, ✅ **Automatically delete head
+     branches**.
+   - Note: with a 1-approval rule, GitHub's _platform_ auto-merge never fires
+     for bot actors (auto-merge ignores ruleset bypass actors — a known GitHub
+     limitation). That's why `renovate.json` uses `platformAutomerge: false`:
+     Renovate merges its own PRs via the API once checks pass, which _does_
+     honor the bypass.
 
    Until `RELEASE_PLEASE_TOKEN` exists, the `Release` workflow's jobs skip
    themselves via a token-gate job (secrets can't be referenced in job-level

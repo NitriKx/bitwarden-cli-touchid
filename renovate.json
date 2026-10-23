@@ -11,11 +11,11 @@
   "labels": ["dependencies"],
   "packageRules": [
     {
-      "description": "Automerge non-major updates once CI is green (platform automerge)",
+      "description": "Automerge non-major updates once CI is green",
       "matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
       "automerge": true,
       "automergeType": "pr",
-      "platformAutomerge": true
+      "platformAutomerge": false
     },
     {
       "description": "Major updates stay as PRs for human review",
