@@ -31,7 +31,7 @@ repos:
         exclude: '^(CHANGELOG\.md|release-please-config\.json|\.release-please-manifest\.json)$'
 
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.7
+    rev: v1.7.12
     hooks:
       - id: actionlint
 
