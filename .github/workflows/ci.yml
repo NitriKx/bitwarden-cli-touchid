@@ -108,12 +108,21 @@ jobs:
 
       - name: Commitlint (all commits in the PR)
         run: |
-          npm ci --prefix "$RUNNER_TEMP/commitlint" --no-save @commitlint/cli @commitlint/config-conventional 2>/dev/null || \
-            npm install --prefix "$RUNNER_TEMP/commitlint" --no-save @commitlint/cli @commitlint/config-conventional
-          npx --prefix "$RUNNER_TEMP/commitlint" commitlint \
+          # Install into a scratch dir OUTSIDE the repo: commitlint resolves
+          # `extends` relative to the config file's directory, and the repo
+          # has no package.json, so installing in-repo fails to resolve
+          # @commitlint/config-conventional.
+          CL_DIR="$RUNNER_TEMP/commitlint"
+          mkdir -p "$CL_DIR"
+          npm install --prefix "$CL_DIR" --no-save --silent \
+            @commitlint/cli @commitlint/config-conventional
+          # Symlink the config into the scratch dir so `extends` resolves
+          # against the installed node_modules, then run from there.
+          cp .commitlintrc.json "$CL_DIR/.commitlintrc.json"
+          (cd "$CL_DIR" && npx commitlint \
             --from "${{ github.event.pull_request.base.sha }}" \
-            --to HEAD \
-            --config .commitlintrc.json
+            --to "$GITHUB_SHA" \
+            --config .commitlintrc.json)
 
   release-check:
     name: Release config check
