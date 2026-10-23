@@ -27,7 +27,6 @@ archives:
       - README.md
 
 checksum:
-  id: checksums
   name_template: "checksums.txt"
 
 changelog:
