@@ -62,14 +62,19 @@ jobs:
     if: needs.release-token-gate.outputs.configured == 'true' && needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: write # upload artifacts to the draft release
+      contents: write # create the tag + upload artifacts to the release
     steps:
-      - name: Checkout the release tag
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # release-please creates a DRAFT release pointing at the merge commit on
+      # main, but the tag itself doesn't exist yet (it's created when the
+      # release is published). Checkout the commit SHA directly and create
+      # the tag locally so goreleaser can derive the version from it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
-          # goreleaser derives the version from the tag on HEAD.
+          ref: ${{ needs.release-please.outputs.sha }}
           fetch-depth: 0
+
+      - name: Create the release tag locally
+        run: git tag ${{ needs.release-please.outputs.tag_name }}
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
