@@ -27,19 +27,21 @@ archives:
       - README.md
 
 checksum:
+  id: checksums
   name_template: "checksums.txt"
 
 changelog:
   # release-please owns the changelog (CHANGELOG.md and the release notes).
   disable: true
 
+# The Release workflow runs goreleaser on tag push. By then the release is
+# already published (the tag exists and the release is live). We disable the
+# built-in release pipe and upload artifacts via a custom step in CI instead,
+# because goreleaser's release pipe tries to PATCH the release (which fails
+# on published/immutable releases with "tag_name already_exists").
 release:
-  # The workflow now runs goreleaser on tag push, after release-please has
-  # published the release (publishing a release pushes its tag). Adopt the
-  # existing published release, upload binaries, and keep its notes.
-  use_existing_draft: true
-  mode: keep-existing
-  replace_existing_artifacts: true
+  disable: true
 
 sboms:
-  - artifacts: archive
+  - id: sboms
+    artifacts: archive

@@ -59,9 +59,10 @@ jobs:
 
   goreleaser:
     name: Build and attach release artifacts
-    # Runs on tag push (github.ref_type == 'tag'). release-please's draft
-    # release has already been published (which pushes the tag), so goreleaser
-    # just needs to attach binaries to the existing release.
+    # Runs on tag push (github.ref_type == 'tag'). The release has already been
+    # published by release-please (publishing a release pushes its tag). We
+    # build the binaries with goreleaser (release pipe disabled) and upload
+    # them to the existing release via the GitHub API.
     needs: release-token-gate
     if: needs.release-token-gate.outputs.configured == 'true' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
@@ -85,9 +86,44 @@ jobs:
       - name: Install syft
         run: go install github.com/anchore/syft/cmd/syft@latest
 
-      - name: Publish binaries to the release
+      - name: Build release artifacts (no release pipe)
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
         with:
-          args: release --clean
+          args: release --clean --skip=announce
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts to the published release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Find the release ID for this tag (it's already published).
+          RELEASE_ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq ".id")
+          echo "Release ID: $RELEASE_ID"
+
+          # Upload all artifacts from dist/ to the release.
+          for f in dist/*; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f")
+            echo "Uploading $name..."
+            gh api --method POST \
+              -H "Accept: application/vnd.github+json" \
+              "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${name}" \
+              --input "$f" \
+              --jq ".name" || {
+                # If the asset already exists, delete and re-upload (for re-runs).
+                echo "  Asset exists, replacing..."
+                ASSET_ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" \
+                  --jq --arg n "$name" ".[] | select(.name == \$n) | .id")
+                if [ -n "$ASSET_ID" ]; then
+                  gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets/${ASSET_ID}"
+                  gh api --method POST \
+                    -H "Accept: application/vnd.github+json" \
+                    "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${name}" \
+                    --input "$f" \
+                    --jq ".name"
+                fi
+              }
+          done
+          echo "All artifacts uploaded."
