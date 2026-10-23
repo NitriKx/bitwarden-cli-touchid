@@ -95,35 +95,57 @@ jobs:
 
       - name: Upload artifacts to the published release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
+          set -euo pipefail
+
           # Find the release ID for this tag (it's already published).
           RELEASE_ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq ".id")
           echo "Release ID: $RELEASE_ID"
 
-          # Upload all artifacts from dist/ to the release.
+          # Upload all release artifacts (skip directories and internal metadata).
           for f in dist/*; do
             [ -f "$f" ] || continue
             name=$(basename "$f")
+            # Skip goreleaser internal metadata file.
+            [ "$name" = "artifacts.json" ] && continue
+            [ "$name" = "metadata.json" ] && continue
             echo "Uploading $name..."
-            gh api --method POST \
-              -H "Accept: application/vnd.github+json" \
-              "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${name}" \
-              --input "$f" \
-              --jq ".name" || {
-                # If the asset already exists, delete and re-upload (for re-runs).
-                echo "  Asset exists, replacing..."
-                ASSET_ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" \
-                  --jq --arg n "$name" ".[] | select(.name == \$n) | .id")
-                if [ -n "$ASSET_ID" ]; then
-                  gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets/${ASSET_ID}"
-                  gh api --method POST \
-                    -H "Accept: application/vnd.github+json" \
-                    "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${name}" \
-                    --input "$f" \
-                    --jq ".name"
-                fi
-              }
+
+            # Determine content type from extension.
+            case "$name" in
+              *.tar.gz) CT="application/gzip" ;;
+              *.zip)    CT="application/zip" ;;
+              *.json)   CT="application/json" ;;
+              *.txt)    CT="text/plain" ;;
+              *)        CT="application/octet-stream" ;;
+            esac
+
+            # Try to upload; if the asset already exists (re-run), delete & retry.
+            if ! gh api --method POST \
+                -H "Accept: application/vnd.github+json" \
+                -H "Content-Type: ${CT}" \
+                "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${name}" \
+                --input "$f" > /dev/null 2>&1; then
+              echo "  Upload failed, checking if asset exists..."
+              ASSET_ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" \
+                --jq --arg n "$name" ".[] | select(.name == \$n) | .id")
+              if [ -n "$ASSET_ID" ]; then
+                echo "  Deleting existing asset $ASSET_ID and re-uploading..."
+                gh api --method DELETE \
+                  "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets/${ASSET_ID}" \
+                  > /dev/null
+                gh api --method POST \
+                  -H "Accept: application/vnd.github+json" \
+                  -H "Content-Type: ${CT}" \
+                  "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${name}" \
+                  --input "$f" > /dev/null
+              else
+                echo "  ERROR: upload failed and no existing asset found for $name"
+                exit 1
+              fi
+            fi
+            echo "  ✓ $name"
           done
           echo "All artifacts uploaded."
