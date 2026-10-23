@@ -116,13 +116,14 @@ jobs:
           mkdir -p "$CL_DIR"
           npm install --prefix "$CL_DIR" --no-save --silent \
             @commitlint/cli @commitlint/config-conventional
-          # Symlink the config into the scratch dir so `extends` resolves
-          # against the installed node_modules, then run from there.
+          # Copy the config into the scratch dir so `extends` resolves against
+          # the installed node_modules. commitlint still needs to run from the
+          # repo root (it shells out to git), so pass absolute paths.
           cp .commitlintrc.json "$CL_DIR/.commitlintrc.json"
-          (cd "$CL_DIR" && npx commitlint \
+          npx --prefix "$CL_DIR" commitlint \
             --from "${{ github.event.pull_request.base.sha }}" \
             --to "$GITHUB_SHA" \
-            --config .commitlintrc.json)
+            --config "$CL_DIR/.commitlintrc.json"
 
   release-check:
     name: Release config check
