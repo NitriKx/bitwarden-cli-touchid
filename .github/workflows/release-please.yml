@@ -102,13 +102,14 @@ jobs:
 
           # Upload all release artifacts using `gh release upload`.
           # It handles Content-Type, the uploads.github.com endpoint, and
-          # --clobber for re-runs. We skip directories and internal metadata.
+          # --clobber for re-runs. We skip goreleaser internal files.
           for f in dist/*; do
             [ -f "$f" ] || continue
             name=$(basename "$f")
-            # Skip goreleaser internal metadata files.
+            # Skip goreleaser internal files: metadata, config snapshot, and
+            # docker digests (empty for non-docker builds, causes HTTP 400).
             case "$name" in
-              artifacts.json|metadata.json) continue ;;
+              artifacts.json|metadata.json|config.yaml|digests.txt) continue ;;
             esac
             echo "Uploading $name..."
             gh release upload "$TAG" "$f" --clobber
