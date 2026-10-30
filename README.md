@@ -63,9 +63,9 @@ Behavior:
    directions, chunk-safe.
 3. Announcement: the first frame on every connection must be
    `{"clientType":"cli"}`. Desktop >= 2026.10.2 drops connections that do not
-   announce themselves first (`Client did not announce itself, dropping
-   connection` in the desktop `app.log`; `bwbio` then reports
-   `Biometric unlock failed: EOF`).
+   announce themselves first. The desktop `app.log` then shows
+   `Client did not announce itself`, and `bwbio` reports
+   `Biometric unlock failed: EOF`.
 4. Handshake: RSA-2048 keypair; the public key (base64 SPKI/DER) plus
    `appId` + `userId` is sent as `setupEncryption`. The desktop app replies
    with `sharedSecret` encrypted RSA-OAEP (SHA-1). The 64-byte shared secret
