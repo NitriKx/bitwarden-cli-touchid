@@ -147,7 +147,17 @@ type pipeAddr struct{}
 func (pipeAddr) Network() string { return "pipe" }
 func (pipeAddr) String() string  { return "namedpipe" }
 
+// ClientAnnouncement is the first frame the desktop app (>= 2026.10.2) requires
+// on every connection, telling it which kind of client connected. A connection
+// whose first frame is anything else is dropped ("Client did not announce
+// itself"). The official CLI sends the same value via `desktop_proxy
+// --client=cli`; see desktop_native/core/src/ipc/announcement.rs in
+// bitwarden/clients. Older desktop apps ignore it (no appId/command).
+const ClientAnnouncement = `{"clientType":"cli"}`
+
 // Connect tries each candidate path in order and returns the first that works.
+// The client announcement is sent before the connection is returned, so callers
+// can start the handshake right away.
 func Connect() (net.Conn, error) {
 	for _, path := range SocketCandidates() {
 		log.Verbose("Connecting to desktop app (via " + path + ")")
@@ -156,7 +166,13 @@ func Connect() (net.Conn, error) {
 			log.Verbose("Failed to connect: " + err.Error())
 			continue
 		}
+		if err := WriteMessage(conn, []byte(ClientAnnouncement)); err != nil {
+			log.Verbose("Failed to announce client: " + err.Error())
+			_ = conn.Close()
+			continue
+		}
 		log.Debug("Socket connected: " + path)
+		log.Debug("Announced client: " + ClientAnnouncement)
 		return conn, nil
 	}
 	return nil, errors.New(`failed to connect to desktop app; ensure the app is running and "Allow browser integration" is enabled in Desktop settings`)

@@ -2,7 +2,9 @@
 // Bitwarden browser extension and the desktop app, mirroring
 // src/ipc/native-messaging-client.ts:
 //
-//  1. Connect to the desktop app via Unix socket / named pipe.
+//  1. Connect to the desktop app via Unix socket / named pipe and announce
+//     the client type ({"clientType":"cli"}, required since desktop 2026.10.2;
+//     see ipc.ClientAnnouncement).
 //  2. Handshake: generate an RSA-2048 keypair, send the public key as
 //     base64 SPKI/DER with appId+userId (command "setupEncryption"); the
 //     desktop replies with sharedSecret encrypted RSA-OAEP (SHA-1).

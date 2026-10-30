@@ -5,7 +5,10 @@ import (
 	"encoding/binary"
 	"io"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 )
 
 // frame builds a length-prefixed message (4-byte LE length + payload).
@@ -104,6 +107,57 @@ func TestReadTruncatedFrame(t *testing.T) {
 	r := NewFrameReader(bytes.NewReader(full[:len(full)-3]))
 	if _, err := r.Read(); err != io.EOF {
 		t.Fatalf("expected EOF on truncated frame, got %v", err)
+	}
+}
+
+// TestConnectAnnouncesClient checks that the first frame sent on a new
+// connection is the client announcement the desktop app (>= 2026.10.2)
+// requires, before any handshake message.
+func TestConnectAnnouncesClient(t *testing.T) {
+	// Unix socket paths are length-limited, so avoid the long t.TempDir().
+	dir, err := os.MkdirTemp("", "bwbio")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	path := filepath.Join(dir, "s.bw")
+
+	ln, err := net.Listen("unix", path)
+	if err != nil {
+		t.Skipf("unix sockets unavailable: %v", err)
+	}
+	defer ln.Close()
+
+	got := make(chan []byte, 1)
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			got <- nil
+			return
+		}
+		defer conn.Close()
+		first, err := NewFrameReader(conn).Read()
+		if err != nil {
+			got <- nil
+			return
+		}
+		got <- first
+	}()
+
+	t.Setenv("BWBIO_IPC_SOCKET_PATH", path)
+	conn, err := Connect()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	select {
+	case first := <-got:
+		if string(first) != `{"clientType":"cli"}` {
+			t.Fatalf("first frame = %q, want the cli client announcement", first)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for the announcement frame")
 	}
 }
 

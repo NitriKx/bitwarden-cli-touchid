@@ -61,17 +61,22 @@ Behavior:
    (direct download).
 2. Framing: 4-byte little-endian length prefix + JSON payload, both
    directions, chunk-safe.
-3. Handshake: RSA-2048 keypair; the public key (base64 SPKI/DER) plus
+3. Announcement: the first frame on every connection must be
+   `{"clientType":"cli"}`. Desktop >= 2026.10.2 drops connections that do not
+   announce themselves first (`Client did not announce itself, dropping
+   connection` in the desktop `app.log`; `bwbio` then reports
+   `Biometric unlock failed: EOF`).
+4. Handshake: RSA-2048 keypair; the public key (base64 SPKI/DER) plus
    `appId` + `userId` is sent as `setupEncryption`. The desktop app replies
    with `sharedSecret` encrypted RSA-OAEP (SHA-1). The 64-byte shared secret
    is the AES-256 key `[0:32]` + HMAC-SHA256 key `[32:64]`.
-4. Commands travel encrypted (`encryptionType: 2`, AES-256-CBC +
+5. Commands travel encrypted (`encryptionType: 2`, AES-256-CBC +
    HMAC-SHA256 over IV+ciphertext). `getBiometricsStatusForUser` must return
    status 0 (Available) before `unlockWithBiometricsForUser` is sent.
    Messages carry `messageId` + `timestamp`; responses outside a ±10s
    window are dropped; 60s is allowed for the biometric prompt.
-5. The unlock response carries `userKeyB64` (the 64-byte user key).
-6. A fresh random 64-byte session key is generated (it is the `BW_SESSION`
+6. The unlock response carries `userKeyB64` (the 64-byte user key).
+7. A fresh random 64-byte session key is generated (it is the `BW_SESSION`
    value, base64). The user key is encrypted with it (type-2 protected
    format) and stored in the official `bw` CLI's `data.json` under
    `__PROTECTED__{userId}_user_auto`, preserving the rest of the file, mode 0600. This is what makes the official CLI accept the session key.
