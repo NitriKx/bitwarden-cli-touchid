@@ -16,7 +16,7 @@ import (
 // Version is the bwbio release version. release-please bumps this line (see
 // the x-release-please-version annotation); goreleaser stamps the tag version
 // over it at build time via -ldflags "-X main.Version=...".
-var Version = "0.4.0" // x-release-please-version
+var Version = "0.4.1" // x-release-please-version
 
 // writeLn prints to stdout unless BW_QUIET=true (mirrors main.ts).
 func writeLn(s string) {
