@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/NitriKx/bitwarden-cli-touchid/compare/v0.4.0...v0.4.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **ipc:** announce client type on connect (Bitwarden Desktop 2026.10.2+) ([cf2db02](https://github.com/NitriKx/bitwarden-cli-touchid/commit/cf2db0262c35bf5c771546905318b5375f6f76e4))
+
 ## [0.4.0](https://github.com/NitriKx/bitwarden-cli-touchid/compare/v0.3.0...v0.4.0) (2026-10-23)
 
 
