@@ -22,7 +22,7 @@ repos:
   # prettier/pre-commit is archived; mirrors-prettier/mirrors-prettier is the
   # community-maintained successor ( Renovate's pre-commit manager tracks it).
   - repo: https://github.com/mirrors-prettier/mirrors-prettier
-    rev: v3.9.10
+    rev: v3.10.0
     hooks:
       - id: prettier
         types_or: [yaml, markdown, json]
